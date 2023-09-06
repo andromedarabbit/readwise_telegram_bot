@@ -99,8 +99,12 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     WISE.check_token()
 
     # link for the telegram post
-    telegram_link = "https://t.me/" + str(update.message.forward_from_chat.username) + "/" + str(
-        update.message.forward_from_message_id)
+    is_public = update.message.forward_from_chat and update.message.forward_from_chat.username and update.message.forward_from_message_id
+    if is_public:
+        telegram_link = (
+                "https://t.me/" + str(update.message.forward_from_chat.username) + "/" +
+                str(update.message.forward_from_message_id)
+        )
 
     urls_to_save = []
     # if the message contains only text, it will have text_html property, but if the message contains media the text of the message would be in the caption_html property    
@@ -111,7 +115,8 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if utils.is_empty_text(text, urls):
         text = ""
     else:
-        urls_to_save.append(telegram_link)
+        if is_public:
+            urls_to_save.append(telegram_link)
     # summary = text[:128]
 
     # send post as Readwise highlight
@@ -120,8 +125,9 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for url in urls_to_save:
         if url.startswith('https://t.me'):
             WISE.save(url=url, title=str(update.message.forward_from_chat.username) + "; " + text[:32])
-        else:
-            WISE.save(url=url)
+            continue
+
+        WISE.save(url=url)
 
         # WISE.save(url=url,
         #           html=text,
@@ -130,7 +136,6 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Working with Reader API...")
     return ConversationHandler.END
-
 
 
 @restricted
