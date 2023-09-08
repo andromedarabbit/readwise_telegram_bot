@@ -4,9 +4,12 @@ import urllib
 
 import tldextract
 from urlextract import URLExtract
+import textdistance as td
+from urltitle import URLTitleReader
 
 _logger = logging.getLogger()
 _extractor = URLExtract()
+_reader = URLTitleReader(verify_ssl=True)
 
 
 def _find_js_redirect(r):
@@ -99,8 +102,17 @@ async def filter_valid_urls(urls: list[str]):
     return list(set(allowed))
 
 
-def is_empty_text(text: str, urls: list[str]):
+async def is_empty_text(text: str, urls: list[str]):
     for url in urls:
         text = text.replace(url, '')
     text = text.strip()
-    return len(text) == 0
+    if len(text) == 0:
+        return True
+
+    for url in urls:
+        title = _reader.title(await _parse_url(url))
+        similarity = td.levenshtein.normalized_similarity(text, title)
+        if similarity > 0.9:
+            return True
+
+    return False

@@ -112,7 +112,7 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # text = update.message.text_html if update.message.caption_html is None else update.message.caption_html
 
     urls = await utils.parse_urls(text)
-    if utils.is_empty_text(text, urls):
+    if await utils.is_empty_text(text, urls):
         text = ""
     else:
         if is_public:
