@@ -120,7 +120,7 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # summary = text[:128]
 
     # send post as Readwise highlight
-    urls_to_save.extend(await utils.filter_value_urls(urls))
+    urls_to_save.extend(await utils.filter_valid_urls(urls))
 
     for url in urls_to_save:
         if url.startswith('https://t.me'):

@@ -42,11 +42,11 @@ jobs:
         run: |
           pip3 install -r requirements.txt
 
-#      - name: Unit Tests
-#        run: |
-#          # wget --version
-#          # wget --server-response=on -q "https://bit.ly/3aQ1Puy"
-#          pip3 install -r requirements-test.txt
-#          pytest -v ./tests
-#        env:
-#          PYTHONPATH: ${{ github.workspace }}
+      - name: Unit Tests
+        run: |
+          # wget --version
+          # wget --server-response=on -q "https://bit.ly/3aQ1Puy"
+          pip3 install -r requirements-test.txt
+          pytest -v ./tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}

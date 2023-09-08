@@ -43,7 +43,7 @@ async def _parse_url(url):
         return text
 
 
-async def _parse_urls(text):
+async def parse_urls(text):
     try:
         urls = _extractor.find_urls(text)
     except (TypeError, AttributeError) as err:
@@ -53,33 +53,7 @@ async def _parse_urls(text):
     if not urls or len(urls) == 0:
         return []
 
-    links = []
-    for url in urls:
-        link = await _parse_url(url)
-        if not link:
-            continue
-
-        links.append(link)
-
-    links = [("http://" + url if "://" not in url else url) for url in links]
-    return list(set(links))
-
-
-async def parse_urls(text: str):
-    urls = await _parse_urls(text)
-
-    allowed = []
-    for url in urls:
-        r = tldextract.extract(url)
-        if not r:
-            continue
-        if not r.registered_domain:
-            continue
-        if r.registered_domain.casefold() == "t.me".casefold():
-            continue
-        allowed.append(url)
-
-    return allowed
+    return list(set(urls))
 
 
 def _is_unsupported(url: str):
@@ -96,17 +70,33 @@ def _is_unsupported(url: str):
     return False
 
 
-async def filter_value_urls(urls: list[str]):
+async def filter_valid_urls(urls: list[str]):
     allowed = []
     for url in urls:
+        link = await _parse_url(url)
+        if not link:
+            continue
+
+        url = "http://" + url if "://" not in link else link
+
         if _is_unsupported(url):
             continue
+
         url.replace('://blog.naver.com', '://m.blog.naver.com')
         url.replace('://cafe.naver.com', '://m.cafe.naver.com')
         url.replace('://post.naver.com', '://m.post.naver.com')
+
+        r = tldextract.extract(url)
+        if not r:
+            continue
+        if not r.registered_domain:
+            continue
+        # if r.registered_domain.casefold() == "t.me".casefold():
+        #     continue
+
         allowed.append(url)
 
-    return allowed
+    return list(set(allowed))
 
 
 def is_empty_text(text: str, urls: list[str]):
