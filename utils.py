@@ -6,6 +6,8 @@ import tldextract
 from urlextract import URLExtract
 import textdistance as td
 from urltitle import URLTitleReader
+from telegram import *
+from cleantext import clean
 
 _logger = logging.getLogger()
 _extractor = URLExtract()
@@ -102,17 +104,40 @@ async def filter_valid_urls(urls: list[str]):
     return list(set(allowed))
 
 
-async def is_empty_text(text: str, urls: list[str]):
-    for url in urls:
-        text = text.replace(url, '')
-    text = text.strip()
+async def is_empty_text(text: str, urls: list[str], entities: tuple[MessageEntity]):
+    for e in reversed(entities):
+        text = text[:e.offset] + text[(e.offset + e.length + 1):]
+
+    text = clean(text, to_ascii=False, no_emoji=True, no_line_breaks=True, no_punct=True, no_currency_symbols=True)
     if len(text) == 0:
         return True
 
     for url in urls:
         title = _reader.title(await _parse_url(url))
+        title = clean(title, to_ascii=False, no_emoji=True, no_line_breaks=True, no_punct=True, no_currency_symbols=True)
+        if not title:
+            continue
+
+        # NOTE 더 좋은 방법을 나중에 찾자
+        if len(text) < len(title):
+            title = title[:len(text)]
+        else:
+            text = text[:len(title)]
+
         similarity = td.levenshtein.normalized_similarity(text, title)
-        if similarity > 0.9:
+        if similarity > 0.75:
             return True
 
     return False
+
+
+def get_tags(msg: Message):
+    tags = msg.parse_entities([MessageEntity.HASHTAG])
+    if not tags:
+        tags = msg.parse_caption_entities([MessageEntity.HASHTAG])
+
+    if not tags:
+        return []
+
+    return [tag.replace('#', '') for tag in tags.values()]
+

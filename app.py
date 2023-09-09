@@ -94,6 +94,8 @@ async def prepare_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return FORWARD
 
 
+
+
 @restricted
 async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     WISE.check_token()
@@ -106,13 +108,15 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 str(update.message.forward_from_message_id)
         )
 
+    tags = utils.get_tags(update.message)
+
     urls_to_save = []
     # if the message contains only text, it will have text_html property, but if the message contains media the text of the message would be in the caption_html property    
     text = update.message.text if update.message.caption is None else update.message.caption
     # text = update.message.text_html if update.message.caption_html is None else update.message.caption_html
 
     urls = await utils.parse_urls(text)
-    if await utils.is_empty_text(text, urls):
+    if await utils.is_empty_text(text, urls, update.message.entities):
         text = ""
     else:
         if is_public:
@@ -124,10 +128,10 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for url in urls_to_save:
         if url.startswith('https://t.me'):
-            WISE.save(url=url, title=str(update.message.forward_from_chat.username) + "; " + text[:32])
+            WISE.save(url=url, tags=tags, title=str(update.message.forward_from_chat.username) + "; " + text[:32])
             continue
 
-        WISE.save(url=url)
+        WISE.save(url=url, tags=tags)
 
         # WISE.save(url=url,
         #           html=text,

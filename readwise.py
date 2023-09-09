@@ -1,5 +1,5 @@
 import requests,sys
-#proxies = {'http':'http://127.0.0.1:8080','https':'http://127.0.0.1:8080'}
+
 class ReadWise:
     def __init__(self, token):
         self.token = token
@@ -33,15 +33,20 @@ class ReadWise:
         for v in kwargs.values():
             if v is None:
                 v = ""
-        r = requests.post(url="https://readwise.io/api/v3/save/",headers={"Authorization": "Token %s" % self.token},
-        json=
-            {
+
+        payload = {
             "url": kwargs.get("url"),
             "html": kwargs.get("html"),
             "title": kwargs.get("title"),
             "summary": kwargs.get("summary"),
-            "should_clean_html": "true"
-            }
+            "should_clean_html": True,
+            "tags": kwargs.get("tags"),
+        }
 
+        r = requests.post(
+            url="https://readwise.io/api/v3/save/",
+            headers={"Authorization": "Token %s" % self.token},
+            json=payload
         )
-    
+
+        return r.status_code == 200 or r.status_code == 201
