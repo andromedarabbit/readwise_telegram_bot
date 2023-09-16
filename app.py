@@ -113,9 +113,9 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     urls_to_save = []
     # if the message contains only text, it will have text_html property, but if the message contains media the text of the message would be in the caption_html property    
     text = update.message.text if update.message.caption is None else update.message.caption
-    # text = update.message.text_html if update.message.caption_html is None else update.message.caption_html
+    html = update.message.text_html if update.message.caption_html is None else update.message.caption_html
 
-    urls = await utils.parse_urls(text)
+    urls = await utils.parse_urls(html)
     if await utils.is_empty_text(text, urls, update.message.entities):
         text = ""
     else:
