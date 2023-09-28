@@ -1,6 +1,7 @@
 import unittest
 import utils
 from telegram import *
+from urltitle import URLTitleReader
 
 
 class UtilsTests(unittest.IsolatedAsyncioTestCase):
@@ -27,6 +28,24 @@ https://bit.ly/44D7zB2
         )
         urls = await utils.parse_urls(text)
         self.assertTrue(await utils.is_empty_text(text, urls, entities))
+
+    async def test_is_empty_text_with_webpage_title_only_3(self):
+        text = """ESS 이야기 4편
+
+https://blog.naver.com/68083015/223213136444"""
+        entities = (
+            MessageEntity(length=44, offset=12, type='URL'),
+        )
+        urls = await utils.parse_urls(text)
+        urls = await utils.filter_valid_urls(urls)
+        self.assertTrue(await utils.is_empty_text(text, urls, entities))
+
+    async def test_title(self):
+        url = 'https://m.blog.naver.com/68083015/223213136444'
+
+        reader = URLTitleReader(verify_ssl=True)
+        title = reader.title(url)
+        self.assertTrue('ESS 이야기 4편' in title)
 
 
 if __name__ == '__main__':

@@ -87,9 +87,9 @@ async def filter_valid_urls(urls: list[str]):
         if _is_unsupported(url):
             continue
 
-        url.replace('://blog.naver.com', '://m.blog.naver.com')
-        url.replace('://cafe.naver.com', '://m.cafe.naver.com')
-        url.replace('://post.naver.com', '://m.post.naver.com')
+        url = url.replace('://blog.naver.com', '://m.blog.naver.com')
+        url = url.replace('://cafe.naver.com', '://m.cafe.naver.com')
+        url = url.replace('://post.naver.com', '://m.post.naver.com')
 
         r = tldextract.extract(url)
         if not r:
@@ -114,9 +114,13 @@ async def is_empty_text(text: str, urls: list[str], entities: tuple[MessageEntit
 
     for url in urls:
         title = _reader.title(await _parse_url(url))
-        title = clean(title, to_ascii=False, no_emoji=True, no_line_breaks=True, no_punct=True, no_currency_symbols=True)
+        title = clean(title, to_ascii=False, no_emoji=True, no_line_breaks=True, no_punct=True,
+                      no_currency_symbols=True)
         if not title:
             continue
+
+        if text in title:
+            return True
 
         # NOTE 더 좋은 방법을 나중에 찾자
         if len(text) < len(title):
@@ -140,4 +144,3 @@ def get_tags(msg: Message):
         return []
 
     return [tag.replace('#', '') for tag in tags.values()]
-

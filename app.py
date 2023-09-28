@@ -94,8 +94,6 @@ async def prepare_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return FORWARD
 
 
-
-
 @restricted
 async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     WISE.check_token()
@@ -116,6 +114,7 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     html = update.message.text_html if update.message.caption_html is None else update.message.caption_html
 
     urls = await utils.parse_urls(html)
+    urls = await utils.filter_valid_urls(urls)
     if await utils.is_empty_text(text, urls, update.message.entities):
         text = ""
     else:
@@ -124,7 +123,7 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # summary = text[:128]
 
     # send post as Readwise highlight
-    urls_to_save.extend(await utils.filter_valid_urls(urls))
+    urls_to_save.extend(urls)
 
     for url in urls_to_save:
         if url.startswith('https://t.me'):
@@ -157,7 +156,8 @@ if __name__ == '__main__':
         entry_points=[MessageHandler(filters.Regex("^a$"), prepare_reader)],
         states={
             FORWARD: [
-                MessageHandler((filters.TEXT | filters.ATTACHMENT | filters.PHOTO) & ~filters.COMMAND, send_to_readwise)],
+                MessageHandler((filters.TEXT | filters.ATTACHMENT | filters.PHOTO) & ~filters.COMMAND,
+                               send_to_readwise)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
