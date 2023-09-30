@@ -5,13 +5,15 @@ import urllib
 import tldextract
 from urlextract import URLExtract
 import textdistance as td
-from urltitle import URLTitleReader
+import urltitle
 from telegram import *
 from cleantext import clean
 
 _logger = logging.getLogger()
 _extractor = URLExtract()
-_reader = URLTitleReader(verify_ssl=True)
+
+urltitle.config.NETLOC_OVERRIDES.update({'thebell.co.kr': {"strainer": "twitter:title"}})
+_reader = urltitle.URLTitleReader(verify_ssl=True)
 
 
 def _find_js_redirect(r):
