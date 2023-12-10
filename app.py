@@ -8,6 +8,7 @@ from functools import wraps
 from dotenv import load_dotenv
 import utils
 from markdown2 import Markdown
+from requests.models import PreparedRequest
 
 load_dotenv()
 
@@ -123,6 +124,19 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         if is_public:
             urls_to_save.append(telegram_link)
+        else:
+            md_text = update.message.text_markdown_v2_urled if update.message.caption_markdown_v2_urled is None else update.message.caption_markdown_v2_urled
+            markdowner = Markdown()
+            html_to_save = markdowner.convert(md_text)
+            url_saved = WISE.save(
+                url=telegram_link, tags=tags, title="텔레그램; " + text[:48],
+                html=html_to_save, published_date=update.message.forward_date,
+                author=update.message.forward_from_chat.title,
+            )
+
+            if url_saved:
+                _logger.warning('URL saved successfully: ' + url_saved)
+
     # summary = text[:128]
 
     # send post as Readwise highlight
@@ -130,15 +144,14 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for url in urls_to_save:
         if url.startswith('https://t.me'):
-            # html_to_save = update.message.text_html_urled if update.message.caption_html_urled is None else update.message.caption_html_urled
-            # html_to_save = html_to_save.replace("\n", "<br/>")
-            md_text = update.message.text_markdown_v2_urled if update.message.caption_markdown_v2_urled is None else update.message.caption_markdown_v2_urled
-            # md_text = md_text.replace('\n', ' ')
-            markdowner = Markdown()
-            html_to_save = markdowner.convert(md_text)
+            req = PreparedRequest()
+            params = {'embed': "1", 'mode': "tme"}
+            req.prepare_url(url, params)
+            url_to_save = req.url
+
             url_saved = WISE.save(
-                url=url, tags=tags, title="텔레그램; " + text[:48],
-                html=html_to_save, published_date=update.message.forward_date,
+                url=url_to_save, tags=tags, title="텔레그램; " + text[:48],
+                published_date=update.message.forward_date,
                 author=update.message.forward_from_chat.title,
             )
 
@@ -148,11 +161,6 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
             continue
 
         WISE.save(url=url, tags=tags)
-
-        # WISE.save(url=url,
-        #           html=text,
-        #           title=str(update.message.forward_from_chat.username) + " " + str(datetime.now().isoformat()),
-        #           summary=summary)
 
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Working with Reader API...")
     return ConversationHandler.END
