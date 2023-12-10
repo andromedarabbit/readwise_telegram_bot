@@ -3,14 +3,12 @@ import re
 import urllib
 
 import tldextract
-from urlextract import URLExtract
 import textdistance as td
 import urltitle
 from telegram import *
 from cleantext import clean
 
 _logger = logging.getLogger()
-_extractor = URLExtract()
 
 urltitle.config.NETLOC_OVERRIDES.update({'thebell.co.kr': {"strainer": "twitter:title"}})
 _reader = urltitle.URLTitleReader(verify_ssl=True)
@@ -50,9 +48,13 @@ async def _parse_url(url):
         return text
 
 
-async def parse_urls(text):
+async def parse_urls(message: Message) -> list[str]:
     try:
-        urls = _extractor.find_urls(text)
+        # urls = _extractor.find_urls(text, only_unique=True, check_dns=True)
+        urls = message.parse_entities([MessageEntity.URL, MessageEntity.TEXT_LINK])
+        if not urls:
+            return []
+        urls = list(urls.values())
     except (TypeError, AttributeError) as err:
         _logger.warning(err)
         return []
@@ -131,7 +133,7 @@ async def is_empty_text(text: str, urls: list[str], entities: tuple[MessageEntit
             text = text[:len(title)]
 
         similarity = td.levenshtein.normalized_similarity(text, title)
-        if similarity > 0.75:
+        if similarity > 0.7:
             return True
 
     return False

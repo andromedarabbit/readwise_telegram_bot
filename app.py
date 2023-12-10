@@ -7,6 +7,7 @@ import logging
 from functools import wraps
 from dotenv import load_dotenv
 import utils
+from markdown2 import Markdown
 
 load_dotenv()
 
@@ -24,6 +25,8 @@ logging.basicConfig(
 )
 
 FORWARD = range(1)
+
+_logger = logging.getLogger()
 
 
 def restricted(func):
@@ -111,9 +114,9 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     urls_to_save = []
     # if the message contains only text, it will have text_html property, but if the message contains media the text of the message would be in the caption_html property    
     text = update.message.text if update.message.caption is None else update.message.caption
-    html = update.message.text_html if update.message.caption_html is None else update.message.caption_html
+    # html = update.message.text_html if update.message.caption_html is None else update.message.caption_html
 
-    urls = await utils.parse_urls(html)
+    urls = await utils.parse_urls(update.message)
     urls = await utils.filter_valid_urls(urls)
     if await utils.is_empty_text(text, urls, update.message.entities):
         text = ""
@@ -127,7 +130,21 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for url in urls_to_save:
         if url.startswith('https://t.me'):
-            WISE.save(url=url, tags=tags, title=str(update.message.forward_from_chat.username) + "; " + text[:32])
+            # html_to_save = update.message.text_html_urled if update.message.caption_html_urled is None else update.message.caption_html_urled
+            # html_to_save = html_to_save.replace("\n", "<br/>")
+            md_text = update.message.text_markdown_v2_urled if update.message.caption_markdown_v2_urled is None else update.message.caption_markdown_v2_urled
+            # md_text = md_text.replace('\n', ' ')
+            markdowner = Markdown()
+            html_to_save = markdowner.convert(md_text)
+            url_saved = WISE.save(
+                url=url, tags=tags, title="텔레그램; " + text[:48],
+                html=html_to_save, published_date=update.message.forward_date,
+                author=update.message.forward_from_chat.title,
+            )
+
+            if url_saved:
+                _logger.warning('URL saved successfully: ' + url_saved)
+
             continue
 
         WISE.save(url=url, tags=tags)
