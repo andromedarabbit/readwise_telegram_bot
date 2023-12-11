@@ -111,6 +111,7 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     tags = utils.get_tags(update.message)
+    tags.extend(['#텔레그램', '#telegram'])
 
     urls_to_save = []
     # if the message contains only text, it will have text_html property, but if the message contains media the text of the message would be in the caption_html property    

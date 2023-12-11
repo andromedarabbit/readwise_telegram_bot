@@ -7,6 +7,7 @@ import textdistance as td
 import urltitle
 from telegram import *
 from cleantext import clean
+import re
 
 _logger = logging.getLogger()
 
@@ -102,6 +103,12 @@ async def filter_valid_urls(urls: list[str]):
             continue
         # if r.registered_domain.casefold() == "t.me".casefold():
         #     continue
+
+        if url.startswith('https://t.me'):
+            pattern = r"https:\/\/t\.me\/.+\/\d+"
+            result = re.search(pattern, url)
+            if not result:
+                continue
 
         allowed.append(url)
 
