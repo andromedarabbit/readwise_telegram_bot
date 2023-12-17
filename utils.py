@@ -55,7 +55,8 @@ async def parse_urls(message: Message) -> list[str]:
         urls = message.parse_entities([MessageEntity.URL, MessageEntity.TEXT_LINK])
         if not urls:
             return []
-        urls = list(urls.values())
+
+        urls = [entity.url for entity in urls.keys() if entity.url]
     except (TypeError, AttributeError) as err:
         _logger.warning(err)
         return []
