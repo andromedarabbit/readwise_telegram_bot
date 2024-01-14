@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import utils
 from markdown2 import Markdown
 from requests.models import PreparedRequest
+import requests
 
 load_dotenv()
 
@@ -145,19 +146,25 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for url in urls_to_save:
         if url.startswith('https://t.me'):
-            req = PreparedRequest()
-            params = {'embed': "1", 'mode': "tme"}
-            req.prepare_url(url, params)
-            url_to_save = req.url
-
-            url_saved = WISE.save(
-                url=url_to_save, tags=tags, title="텔레그램; " + text[:48],
-                published_date=update.message.forward_date,
-                author=update.message.forward_from_chat.title,
-            )
+            url_to_bookmark = await telegram_url_to_save(url)
+            if url_to_bookmark == url:
+                md_text = update.message.text_markdown_v2_urled if update.message.caption_markdown_v2_urled is None else update.message.caption_markdown_v2_urled
+                markdowner = Markdown()
+                html_to_save = markdowner.convert(md_text)
+                url_saved = WISE.save(
+                    url=url_to_bookmark, tags=tags, title="텔레그램; " + text[:48],
+                    html=html_to_save, published_date=update.message.forward_date,
+                    author=update.message.forward_from_chat.title,
+                )
+            else:
+                url_saved = WISE.save(
+                    url=url_to_bookmark, tags=tags, title="텔레그램; " + text[:48],
+                    published_date=update.message.forward_date,
+                    author=update.message.forward_from_chat.title,
+                )
 
             if url_saved:
-                _logger.warning('URL saved successfully: ' + url_saved)
+                _logger.debug('URL saved successfully: ' + url_saved)
 
             continue
 
@@ -165,6 +172,26 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Working with Reader API...")
     return ConversationHandler.END
+
+
+async def telegram_url_to_save(url: str) -> str:
+    req = PreparedRequest()
+    params = {'embed': "1", 'mode': "tme"}
+    req.prepare_url(url, params)
+    url_to_bookmark = req.url
+
+    r = requests.get(
+        url=url_to_bookmark
+    )
+
+    if r.status_code != 200 and r.status_code != 201:
+        _logger.warning(r.text)
+        return url
+
+    if 'Please open Telegram to view this post' in r.text:
+        return url
+
+    return url_to_bookmark
 
 
 @restricted
