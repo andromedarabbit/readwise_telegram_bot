@@ -51,12 +51,20 @@ async def _parse_url(url):
 
 async def parse_urls(message: Message) -> list[str]:
     try:
+        urls = []
         # urls = _extractor.find_urls(text, only_unique=True, check_dns=True)
-        urls = message.parse_entities([MessageEntity.URL, MessageEntity.TEXT_LINK])
-        if not urls:
-            return []
+        entities = message.parse_entities([MessageEntity.TEXT_LINK])
+        if entities:
+            urls.extend(
+                [entity.url for entity in entities.keys() if entity.url]
+            )
 
-        urls = [entity.url for entity in urls.keys() if entity.url]
+        entities = message.parse_entities([MessageEntity.URL])
+        if entities:
+            urls.extend(
+                [entity for entity in entities.values()]
+            )
+        return urls
     except (TypeError, AttributeError) as err:
         _logger.warning(err)
         return []

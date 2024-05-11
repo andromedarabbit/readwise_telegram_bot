@@ -112,7 +112,7 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     tags = utils.get_tags(update.message)
-    tags.extend(['#텔레그램', '#telegram'])
+    tags.extend(['텔레그램', 'telegram'])
 
     urls_to_save = []
     # if the message contains only text, it will have text_html property, but if the message contains media the text of the message would be in the caption_html property    
@@ -130,6 +130,10 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
             md_text = update.message.text_markdown_v2_urled if update.message.caption_markdown_v2_urled is None else update.message.caption_markdown_v2_urled
             markdowner = Markdown()
             html_to_save = markdowner.convert(md_text)
+            telegram_link = (
+                    'https://andromedarabbit.net/madeupurl/' + str(update.message.forward_from_chat.id) + '/' +
+                    str(update.message.forward_from_message_id)
+            )
             url_saved = WISE.save(
                 url=telegram_link, tags=tags, title="텔레그램; " + text[:48],
                 html=html_to_save, published_date=update.message.forward_date,
