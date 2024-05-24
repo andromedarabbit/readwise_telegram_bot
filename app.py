@@ -131,7 +131,7 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
             markdowner = Markdown()
             html_to_save = markdowner.convert(md_text)
             telegram_link = (
-                    'https://andromedarabbit.net/madeupurl/' + str(update.message.forward_from_chat.id) + '/' +
+                    'https://andromedarabbit.net/madeupurl/' +
                     str(update.message.forward_from_message_id)
             )
             url_saved = WISE.save(

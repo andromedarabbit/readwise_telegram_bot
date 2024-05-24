@@ -12,7 +12,7 @@ import re
 _logger = logging.getLogger()
 
 urltitle.config.NETLOC_OVERRIDES.update({'thebell.co.kr': {"strainer": "twitter:title"}})
-_reader = urltitle.URLTitleReader(verify_ssl=True)
+_reader = urltitle.URLTitleReader(verify_ssl=False)
 
 
 def _find_js_redirect(r):
@@ -133,7 +133,11 @@ async def is_empty_text(text: str, urls: list[str], entities: tuple[MessageEntit
         return True
 
     for url in urls:
-        title = _reader.title(await _parse_url(url))
+        try:
+            title = _reader.title(await _parse_url(url))
+        except urltitle.urltitle.URLTitleError:
+            continue
+
         title = clean(title, to_ascii=False, no_emoji=True, no_line_breaks=True, no_punct=True,
                       no_currency_symbols=True)
         if not title:
