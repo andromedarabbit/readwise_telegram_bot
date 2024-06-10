@@ -104,6 +104,7 @@ async def filter_valid_urls(urls: list[str]):
         url = url.replace('://blog.naver.com', '://m.blog.naver.com')
         url = url.replace('://cafe.naver.com', '://m.cafe.naver.com')
         url = url.replace('://post.naver.com', '://m.post.naver.com')
+        url = re.sub(r'(https://n\.news\.naver\.com/article/)(\d{3}/\d{9})', r'\1print/\2', url)
 
         r = tldextract.extract(url)
         if not r:

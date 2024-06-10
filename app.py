@@ -10,6 +10,7 @@ import utils
 from markdown2 import Markdown
 from requests.models import PreparedRequest
 import requests
+import re
 
 load_dotenv()
 
@@ -134,6 +135,7 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     'https://andromedarabbit.net/madeupurl/' +
                     str(update.message.forward_from_message_id)
             )
+            author = update.message.forward_from_chat.title if update.message.forward_from_chat.title else None
             url_saved = WISE.save(
                 url=telegram_link, tags=tags, title="텔레그램; " + text[:48],
                 html=html_to_save, published_date=update.message.forward_date,
