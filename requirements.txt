@@ -7,3 +7,4 @@ textdistance
 urltitle
 clean-text
 pysocks
+unidecode
