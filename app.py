@@ -36,7 +36,7 @@ def restricted(func):
     @wraps(func)
     async def wrapped(update, context, *args, **kwargs):
         user_id = update.effective_user.id
-        if user_id == ADMIN:
+        if user_id != int(ADMIN):
             print(f"Unauthorized access denied for {user_id}.")
             return
         return await func(update, context, *args, **kwargs)
@@ -135,11 +135,11 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     'https://andromedarabbit.net/madeupurl/' +
                     str(update.message.forward_from_message_id)
             )
-            author = update.message.forward_from_chat.title if update.message.forward_from_chat.title else None
+            author = update.message.forward_from_chat.title if update.message.forward_from_chat and update.message.forward_from_chat.title else None
             url_saved = WISE.save(
                 url=telegram_link, tags=tags, title="텔레그램; " + text[:48],
                 html=html_to_save, published_date=update.message.forward_date,
-                author=update.message.forward_from_chat.title,
+                author=author,
             )
 
             if url_saved:
@@ -157,16 +157,18 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 md_text = update.message.text_markdown_v2_urled if update.message.caption_markdown_v2_urled is None else update.message.caption_markdown_v2_urled
                 markdowner = Markdown()
                 html_to_save = markdowner.convert(md_text)
+                author = update.message.forward_from_chat.title if update.message.forward_from_chat and update.message.forward_from_chat.title else None
                 url_saved = WISE.save(
                     url=url_to_bookmark, tags=tags, title="텔레그램; " + text[:48],
                     html=html_to_save, published_date=update.message.forward_date,
-                    author=update.message.forward_from_chat.title,
+                    author=author,
                 )
             else:
+                author = update.message.forward_from_chat.title if update.message.forward_from_chat and update.message.forward_from_chat.title else None
                 url_saved = WISE.save(
                     url=url_to_bookmark, tags=tags, title="텔레그램; " + text[:48],
                     published_date=update.message.forward_date,
-                    author=update.message.forward_from_chat.title,
+                    author=author,
                 )
 
             if url_saved:
