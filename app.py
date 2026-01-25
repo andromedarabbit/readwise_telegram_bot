@@ -1,5 +1,5 @@
 import logging, os
-from telegram import *
+from telegram import Update, MessageOriginChannel, MessageOriginChat, MessageOriginUser, MessageOriginHiddenUser
 from telegram.ext import *
 from readwise import ReadWise
 from datetime import datetime
@@ -64,22 +64,47 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @restricted
 async def send_to_readwise(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("[+][+][+][+][+] Message from " + str(update.effective_user.id))
-    # link for the telegram post
-    telegram_link = "<a href='https://t.me/" + str(update.message.forward_from_chat.username) + "/" + str(
-        update.message.forward_from_message_id) + "'>Telegram Link</a>"
+
+    # Check if message is forwarded
+    if not update.message.forward_origin:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Please forward a message from a channel/chat to use this feature."
+        )
+        return
+
+    # Get chat info from forward_origin
+    origin = update.message.forward_origin
+
+    if isinstance(origin, MessageOriginChannel):
+        # MessageOriginChannel
+        chat_username = origin.chat.username
+        message_id = origin.message_id
+        telegram_link = f"<a href='https://t.me/{chat_username}/{message_id}'>Telegram Link</a>"
+        from_who = chat_username
+    elif isinstance(origin, MessageOriginChat):
+        # MessageOriginChat (group)
+        chat_title = origin.chat.title
+        # No public link for groups, use a different approach
+        telegram_link = "Telegram Link"
+        from_who = chat_title
+    else:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="This feature only works with forwarded channel/group messages."
+        )
+        return
 
     # default note text
     note_txt = "from Telegram bot"
 
-    # if the message contains only text, it will have text_html property, but if the message contains media the text of the message would be in the caption_html property    
+    # if the message contains only text, it will have text_html property, but if the message contains media the text of the message would be in the caption_html property
     text = update.message.text_html if update.message.caption_html is None else update.message.caption_html
     # applend telegram link to the post
-    text = text + "\n\n" + "<a href='https://t.me/" + str(update.message.forward_from_chat.username) + "/" + str(
-        update.message.forward_from_message_id) + "'>Telegram Link</a>"
+    text = text + "\n\n" + telegram_link
     # getting only one link (first link in the post would be here) from the post itself.
     post_link = url_extracter(update.message.parse_entities())
-    # getting chat or channel name from the original telegram post
-    from_who = str(update.message.forward_from_chat.username)
+
     # check token for Readwise API before sending highlight
     WISE.check_token()
     # send post as Readwise highlight
@@ -104,19 +129,28 @@ async def prepare_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     WISE.check_token()
 
-    # link for the telegram post
-    is_public = update.message.forward_from_chat and update.message.forward_from_chat.username and update.message.forward_from_message_id
-    if is_public:
-        telegram_link = (
-                "https://t.me/" + str(update.message.forward_from_chat.username) + "/" +
-                str(update.message.forward_from_message_id)
-        )
+    # Check if message is forwarded and determine if it's a public channel
+    origin = update.message.forward_origin
+    is_forwarded = origin is not None
+
+    is_public = False
+    telegram_link = None
+
+    if is_forwarded:
+        if isinstance(origin, MessageOriginChannel):
+            is_public = origin.chat.username is not None
+            if is_public:
+                telegram_link = f"https://t.me/{origin.chat.username}/{origin.message_id}"
+        elif isinstance(origin, MessageOriginChat):
+            is_public = origin.chat.username is not None
+            if is_public:
+                telegram_link = f"https://t.me/{origin.chat.username}/{origin.message_id}"
 
     tags = utils.get_tags(update.message)
     tags.extend(['텔레그램', 'telegram'])
 
     urls_to_save = []
-    # if the message contains only text, it will have text_html property, but if the message contains media the text of the message would be in the caption_html property    
+    # if the message contains only text, it will have text_html property, but if the message contains media the text of the message would be in the caption_html property
     text = update.message.text if update.message.caption is None else update.message.caption
     # html = update.message.text_html if update.message.caption_html is None else update.message.caption_html
 
@@ -125,20 +159,28 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if await utils.is_empty_text(text, urls, update.message.entities):
         text = ""
     else:
-        if is_public:
+        if is_public and telegram_link:
             urls_to_save.append(telegram_link)
         else:
             md_text = update.message.text_markdown_v2_urled if update.message.caption_markdown_v2_urled is None else update.message.caption_markdown_v2_urled
             markdowner = Markdown()
             html_to_save = markdowner.convert(md_text)
-            telegram_link = (
-                    'https://andromedarabbit.net/madeupurl/' +
-                    str(update.message.forward_from_message_id)
-            )
-            author = update.message.forward_from_chat.title if update.message.forward_from_chat and update.message.forward_from_chat.title else None
+
+            # Get message_id from forward_origin
+            message_id = origin.message_id if origin else getattr(update.message, 'message_id', '')
+            telegram_link = f'https://andromedarabbit.net/madeupurl/{message_id}'
+
+            # Get author/title from origin
+            author = None
+            if origin:
+                if isinstance(origin, MessageOriginChannel):
+                    author = origin.chat.title
+                elif isinstance(origin, MessageOriginChat):
+                    author = origin.chat.title
+
             url_saved = WISE.save(
                 url=telegram_link, tags=tags, title="텔레그램; " + text[:48],
-                html=html_to_save, published_date=update.message.forward_date,
+                html=html_to_save, published_date=origin.date if origin else None,
                 author=author,
             )
 
@@ -157,17 +199,26 @@ async def send_to_reader(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 md_text = update.message.text_markdown_v2_urled if update.message.caption_markdown_v2_urled is None else update.message.caption_markdown_v2_urled
                 markdowner = Markdown()
                 html_to_save = markdowner.convert(md_text)
-                author = update.message.forward_from_chat.title if update.message.forward_from_chat and update.message.forward_from_chat.title else None
+
+                # Get author from origin
+                author = None
+                if origin and isinstance(origin, (MessageOriginChannel, MessageOriginChat)):
+                    author = origin.chat.title
+
                 url_saved = WISE.save(
                     url=url_to_bookmark, tags=tags, title="텔레그램; " + text[:48],
-                    html=html_to_save, published_date=update.message.forward_date,
+                    html=html_to_save, published_date=origin.date if origin else None,
                     author=author,
                 )
             else:
-                author = update.message.forward_from_chat.title if update.message.forward_from_chat and update.message.forward_from_chat.title else None
+                # Get author from origin
+                author = None
+                if origin and isinstance(origin, (MessageOriginChannel, MessageOriginChat)):
+                    author = origin.chat.title
+
                 url_saved = WISE.save(
                     url=url_to_bookmark, tags=tags, title="텔레그램; " + text[:48],
-                    published_date=update.message.forward_date,
+                    published_date=origin.date if origin else None,
                     author=author,
                 )
 
