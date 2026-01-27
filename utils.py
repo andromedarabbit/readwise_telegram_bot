@@ -4,15 +4,74 @@ import urllib
 
 import tldextract
 import textdistance as td
-import urltitle
+import requests
+import extruct
 from telegram import *
 from cleantext import clean
-import re
+from bs4 import BeautifulSoup
 
 _logger = logging.getLogger()
 
-urltitle.config.NETLOC_OVERRIDES.update({'thebell.co.kr': {"strainer": "twitter:title"}})
-_reader = urltitle.URLTitleReader(verify_ssl=False)
+
+def extract_url_metadata(url: str, timeout: int = 5) -> dict:
+    """
+    Extract metadata from URL using extruct + requests.
+
+    Returns dict with keys:
+        - title: page title (from <title> or metadata)
+        - og_title: Open Graph title
+        - description: page description
+        - image: main image URL
+        - all_metadata: raw extruct output
+    """
+    result = {
+        "title": "",
+        "og_title": "",
+        "description": "",
+        "image": "",
+        "all_metadata": {}
+    }
+
+    try:
+        response = requests.get(url, timeout=timeout, headers={
+            'User-Agent': 'Mozilla/5.0 (compatible; ReadwiseTelegramBot/1.0)'
+        }, verify=True)
+        response.raise_for_status()
+
+        # Extract metadata using extruct
+        metadata = extruct.extract(response.text, base_url=url)
+        result["all_metadata"] = metadata
+
+        # Try <title> tag first (using BeautifulSoup for HTML parsing)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        if soup.title and soup.title.string:
+            result["title"] = soup.title.string.strip()
+
+        # Fallback: Open Graph title
+        if metadata.get('opengraph'):
+            og = metadata['opengraph'][0]  # First OG object
+            if og.get('og:title'):
+                result["og_title"] = og['og:title']
+            if og.get('og:description'):
+                result["description"] = og['og:description']
+            if og.get('og:image'):
+                result["image"] = og['og:image']
+
+        # Fallback: JSON-LD headline/name
+        if metadata.get('json-ld'):
+            for item in metadata['json-ld']:
+                if isinstance(item, dict):
+                    if item.get('headline'):
+                        result["title"] = item['headline']
+                        break
+                    elif item.get('name'):
+                        result["title"] = item['name']
+                        break
+
+    except (requests.RequestException, Exception):
+        pass  # Return empty dict on error
+
+    return result
 
 
 def _find_js_redirect(r):
@@ -135,8 +194,13 @@ async def is_empty_text(text: str, urls: list[str], entities: tuple[MessageEntit
 
     for url in urls:
         try:
-            title = _reader.title(await _parse_url(url))
-        except urltitle.urltitle.URLTitleError:
+            parsed_url = await _parse_url(url)
+            metadata = extract_url_metadata(parsed_url)
+            title = metadata["og_title"] or metadata["title"]  # Prefer OG title
+        except Exception:
+            continue
+
+        if not title:
             continue
 
         title = clean(title, to_ascii=False, no_emoji=True, no_line_breaks=True, no_punct=True,

@@ -4,7 +4,8 @@ requests
 markdown2
 tldextract
 textdistance
-urltitle
 clean-text
 pysocks
 unidecode
+extruct
+beautifulsoup4
