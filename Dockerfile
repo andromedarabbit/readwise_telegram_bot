@@ -6,6 +6,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Seoul
 
 RUN apt-get update \
+    && apt-get upgrade -yq \
     && apt-get install -yq \
         tzdata \
         locales \
